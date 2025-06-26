@@ -1,7 +1,7 @@
-
 import { CommandInteraction, SlashCommandBuilder } from "discord.js";
 import { createEmojiCountStatsMessage } from "../embed-formatter/emoji-count-formatter";
 import { getEmojisCount, getEmojisCountForUser } from "../db/sqlite";
+import { updateServerEmojis } from "../utils/emoji-manager";
 
 export const data = new SlashCommandBuilder()
     .setName('emoji')
@@ -14,6 +14,10 @@ data.addStringOption(option =>
 ).addStringOption(option =>
     option.setName('user')
         .setDescription('enter a user to check emoji usage or not to check for all time').setRequired(false)
+).addBooleanOption(option =>
+    option.setName('update')
+        .setDescription('force update the server emoji list')
+        .setRequired(false)
 );
 
 export async function execute(interaction: CommandInteraction) {
@@ -22,9 +26,18 @@ export async function execute(interaction: CommandInteraction) {
 
         const periodOption = interaction.options.data.find(option => option.name === 'period');
         const userOption = interaction.options.data.find(option => option.name === 'user');
+        const updateOption = interaction.options.data.find(option => option.name === 'update');
 
         const period = periodOption ? Number(periodOption.value) : undefined; 
         const user = userOption?.value as string;
+        const shouldUpdate = updateOption?.value as boolean;
+
+        // Handle emoji list update
+        if (shouldUpdate) {
+            await updateServerEmojis();
+            await interaction.editReply('✅ Server emoji list has been updated!');
+            return;
+        }
 
         // Validate period
         if (period !== undefined && (!Number.isInteger(period) || period < 1)) {
@@ -36,7 +49,6 @@ export async function execute(interaction: CommandInteraction) {
         if (user !== undefined && !userRegex.test(user)) {
             throw new Error('Invalid user format. It must be in the format of a mention (e,g., @Human).');
         }
-
 
         let emojiCounts;
         if (period) emojiCounts = await getEmojisCount(period);

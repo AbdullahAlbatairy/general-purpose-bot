@@ -7,7 +7,7 @@ import {
 import { currentBackwardTextChannel, currentBackwardTrackedChannel, currentForwardTextChannel, currentForwardTrackedChannel, updateBackwardChannelTracker, updateForwardChannelTracker } from "./channels-storage";
 import { v4 as uuid } from "uuid";
 import { discordEmojiRegExp } from "../constant";
-import { serverEmojisName } from "../index";
+import { isServerEmoji } from "../utils/emoji-manager";
 
 let backwardWorkerJob: CronJob | null = null;
 let forwardWorkerJob: CronJob | null = null;
@@ -93,13 +93,13 @@ async function emojisBackwardScanner() {
             if (match) {
                 let isMatchingServerEmoji = false;
                 match.forEach(m => {
-                    if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
+                    if (isServerEmoji(m)) isMatchingServerEmoji = true;
                 })
                 if (isMatchingServerEmoji) {
                     console.log(`${message.author.displayName} - ${message.id} - ${message.channel.id} - ${message.content}`);
                     await addMessage(prisma, message.channel.id, message.id, message.author.id, message.createdTimestamp);
                     for (const emoji of match) {
-                        if (!serverEmojisName.some(name => name === emoji)) continue;
+                        if (!isServerEmoji(emoji)) continue;
                         const emojiId = uuid();
                         await addEmoji(prisma, emojiId, emoji, message.id);
                     }
@@ -156,7 +156,7 @@ async function emojisForwardScanner() {
                 if (match) {
                     let isMatchingServerEmoji = false;
                     match.forEach(m => {
-                        if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
+                        if (isServerEmoji(m)) isMatchingServerEmoji = true;
                     })
                     if (isMatchingServerEmoji) {
                         console.log(`${message.author.displayName} - ${message.id} - ${message.channel.id} - ${message.content}`);

@@ -1,4 +1,4 @@
-import { client, serverEmojisName } from '../index'
+import { client } from '../index'
 import {
     addMessage,
     addEmoji,
@@ -10,6 +10,7 @@ import {
 import { v4 as uuid } from 'uuid';
 import { discordEmojiRegExp } from "../constant";
 import { channelsMessageTrackerList } from '../worker/channels-storage';
+import { isServerEmoji } from '../utils/emoji-manager';
 
 
 export async function messageListener() {
@@ -35,13 +36,13 @@ async function createListener() {
         if (match) {
             let isMatchingServerEmoji = false;
             match.forEach(m => {
-                if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
+                if (isServerEmoji(m)) isMatchingServerEmoji = true;
             })
             if (isMatchingServerEmoji) {
                 await prisma.$transaction(async (prisma) => {
                     await addMessage(prisma, message.channel.id, messageId, messageAuthor, createdAt)
                     for (const emoji of match) {
-                        if (!serverEmojisName.some(name => name === emoji)) continue; //the check again because if one message has two emojis one from the server and another one not from the server it will add both, so this remove the second one
+                        if (!isServerEmoji(emoji)) continue; //the check again because if one message has two emojis one from the server and another one not from the server it will add both, so this remove the second one
                         const emojiId = uuid();
                         try {
                             await addEmoji(prisma, emojiId, emoji, messageId);
@@ -75,7 +76,7 @@ async function updateListener() {
         if (oldMatch) {
             let isMatchingServerEmoji = false;
             oldMatch.forEach(m => {
-                if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
+                if (isServerEmoji(m)) isMatchingServerEmoji = true;
             })
             if (isMatchingServerEmoji) {
                 await deleteMessage(prisma, oldMessageId)
@@ -91,14 +92,14 @@ async function updateListener() {
         if (match) {
             let isMatchingServerEmoji = false;
             match.forEach(m => {
-                if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
+                if (isServerEmoji(m)) isMatchingServerEmoji = true;
             })
             if (isMatchingServerEmoji) {
                 await prisma.$transaction(async (prisma) => {
 
                     await addMessage(prisma, channelId, messageId, messageAuthor as string, createdAt)
                     for (const emoji of match) {
-                        if (!serverEmojisName.some(name => name === emoji)) continue;
+                        if (!isServerEmoji(emoji)) continue;
                         const emojiId = uuid();
                         try {
                             await addEmoji(prisma, emojiId, emoji, messageId);
@@ -140,7 +141,7 @@ async function deleteListener() {
         if (oldMatch) {
             let isMatchingServerEmoji = false;
             oldMatch.forEach(m => {
-                if (serverEmojisName.some(name => name === m)) isMatchingServerEmoji = true;
+                if (isServerEmoji(m)) isMatchingServerEmoji = true;
             })
             if (isMatchingServerEmoji) {
                 await deleteMessage(prisma, oldMessageId)
